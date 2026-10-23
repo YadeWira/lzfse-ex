@@ -3,6 +3,12 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag or commit to test (empty = the triggering ref)"
+        required: false
+        default: ""
 
 jobs:
   # Linux x64, Linux x86 (multilib), and ARM via qemu-user.
@@ -39,6 +45,8 @@ jobs:
             emulator: "qemu-arm;-L;/usr/arm-linux-gnueabihf"
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
       - name: Install toolchain
         run: |
           sudo apt-get update
@@ -61,6 +69,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
       - name: Install toolchain
         run: |
           sudo apt-get update
@@ -85,6 +95,8 @@ jobs:
         arch: [x64, Win32]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
       - name: Configure
         run: cmake -S . -B build -A ${{ matrix.arch }}
       - name: Build
@@ -99,9 +111,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-13, macos-14]
+        os: [macos-15, macos-15-intel]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
       - name: Build
@@ -115,6 +129,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
       - name: Install toolchain
         run: |
           sudo apt-get update
