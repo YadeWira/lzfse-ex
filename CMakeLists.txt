@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.5)
 project(lzfse C)
 
 # Keep in sync with the LZFSE_VERSION_* macros in src/lzfse.h.
-set(LZFSE_VERSION 1.0.1)
+set(LZFSE_VERSION 1.0.2)
 set(LZFSE_SOVERSION 1)
 
 include(CheckCCompilerFlag)
@@ -165,6 +165,33 @@ if(NOT LZFSE_DISABLE_TESTS)
       -DLZFSE_CLI=$<TARGET_FILE:lzfse_cli>
       -DLZFSE_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/cli-tests
       -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cli-tests.cmake)
+
+  # zpaq-std's codec_check: exact-size buffers, output caps and damaged input.
+  # Most useful when the sanitizers are enabled.
+  add_executable(lzfse_codec_check
+    tests/codec_check/codec_check.c
+    tests/codec_check/adapter_lzfse.c)
+  target_link_libraries(lzfse_codec_check lzfse)
+  if(CMAKE_VERSION VERSION_LESS 2.8.11)
+    set_property(TARGET lzfse_codec_check APPEND PROPERTY
+      INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/src")
+  else()
+    target_include_directories(lzfse_codec_check PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+  endif()
+  lzfse_add_compiler_flags(lzfse_codec_check -Wall -Wno-unknown-pragmas -Wno-unused-variable)
+  if(CMAKE_VERSION VERSION_LESS 3.1 OR CMAKE_C_COMPILER_ID STREQUAL "Intel")
+    lzfse_add_compiler_flags(lzfse_codec_check -std=c99)
+  else()
+    set_property(TARGET lzfse_codec_check PROPERTY C_STANDARD 99)
+  endif()
+  add_test(NAME "${LZFSE_TEST_PREFIX}codec_check"
+    COMMAND ${LZFSE_TEST_RUNNER} $<TARGET_FILE:lzfse_codec_check>
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/lzfse_decode_base.c
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/lzfse_encode_base.c
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/lzfse_fse.h
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/lzfse_main.c
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/api-tests.c
+      ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
 
   file(GLOB_RECURSE
     ROUNDTRIP_INPUTS

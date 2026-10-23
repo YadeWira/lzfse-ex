@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.2 — 2026-10-22
+
+- Decoder: fix an 8-byte heap over-read when decoding damaged data.
+  `fse_in_checked_flush64()` loaded a full 8 bytes before checking the lower
+  bound, even when the refill amount was zero and even when fewer than 8
+  bytes remained before the end of the caller's input buffer. It now reads
+  only the bytes it consumes and rejects out-of-range bit counts. The 32-bit
+  stream (`fse_in_checked_flush32()`) had the same problem, plus an unaligned
+  4-byte load; both are fixed. Decoded output for valid streams is unchanged.
+  Found by zpaq-std's `codec_check` with ASan; the bug is present in Apple's
+  upstream LZFSE as well.
+- Tests: bundle zpaq-std's `codec_check` (MIT) under `tests/codec_check/` and
+  run it on repository files as a CTest, so the sanitizer builds exercise
+  exact-size buffers, output caps and damaged input. This is the test that
+  reproduces the bug above.
+
 ## 1.0.1 — 2026-10-22
 
 - Decoder: avoid unsigned pointer underflow (undefined behavior) in match
