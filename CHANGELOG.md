@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.3 — 2026-10-22
+
+- Tests: fix the link of the bundled `codec_check` test on macOS when
+  building without AddressSanitizer. It referenced the ASan death callback
+  unconditionally, and on Mach-O an undefined weak function is a link
+  error; the reference is now compiled only when ASan is enabled.
+- Encoder: avoid a negative shift exponent in `fse_init_encoder_table()`
+  when a symbol frequency equals the number of states (`k == 0`), flagged by
+  UBSan in zpaq-std's full run. `delta1` is unused in that case (the state
+  is always >= S0), so it is set to 0. Encoded output is unchanged
+  (verified byte-for-byte on 25 corpus files).
+
 ## 1.0.2 — 2026-10-22
 
 - Decoder: fix an 8-byte heap over-read when decoding damaged data.

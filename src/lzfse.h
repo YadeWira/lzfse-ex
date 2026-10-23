@@ -28,8 +28,8 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 /*! @abstract Version of this library. */
 #define LZFSE_VERSION_MAJOR 1
 #define LZFSE_VERSION_MINOR 0
-#define LZFSE_VERSION_PATCH 2
-#define LZFSE_VERSION_STRING "1.0.2"
+#define LZFSE_VERSION_PATCH 3
+#define LZFSE_VERSION_STRING "1.0.3"
 
 /*! @abstract Version of this fork, for codec/codecinfo-style output. */
 #define LZFSE_EX_VERSION_STRING LZFSE_VERSION_STRING

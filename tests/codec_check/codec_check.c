@@ -69,9 +69,20 @@ static unsigned char* xmalloc(size_t n) {
   return p;
 }
 
-/* Under AddressSanitizer, say where it happened before its report ends the program. */
-#if defined(__GNUC__) && !defined(_WIN32)
-void __sanitizer_set_death_callback(void (*)(void)) __attribute__((weak));
+/* Under AddressSanitizer, say where it happened before its report ends the program.
+   Only reference the sanitizer runtime when it is actually linked: on Mach-O an
+   undefined weak function is a link error, and builds without ASan do not need
+   the callback at all. */
+#if defined(__SANITIZE_ADDRESS__)
+#define LZFSE_CC_ASAN 1
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define LZFSE_CC_ASAN 1
+#endif
+#endif
+
+#if defined(LZFSE_CC_ASAN) && !defined(_WIN32)
+void __sanitizer_set_death_callback(void (*)(void));
 static void on_death(void) {
   printf("\nMEMORY ERROR: %s, level %d, block at %lu of %s (report above)\n",
          cur_check, cur_level, (unsigned long)cur_offset, cur_file);
@@ -166,8 +177,8 @@ int main(int argc, char** argv) {
 #ifndef _WIN32
   signal(SIGALRM, on_alarm);
 #endif
-#if defined(__GNUC__) && !defined(_WIN32)
-  if (__sanitizer_set_death_callback) __sanitizer_set_death_callback(on_death);
+#if defined(LZFSE_CC_ASAN) && !defined(_WIN32)
+  __sanitizer_set_death_callback(on_death);
 #endif
   static const size_t sizes[] = { 1, 7, 100, 4096, 65536, 1u << 20, 16u << 20 };
   long blocks = 0;

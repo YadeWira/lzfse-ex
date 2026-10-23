@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.5)
 project(lzfse C)
 
 # Keep in sync with the LZFSE_VERSION_* macros in src/lzfse.h.
-set(LZFSE_VERSION 1.0.2)
+set(LZFSE_VERSION 1.0.3)
 set(LZFSE_SOVERSION 1)
 
 include(CheckCCompilerFlag)
