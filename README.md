@@ -98,6 +98,13 @@ With CMake, `ctest` runs the same tests:
 
     $ cmake -S . -B build && cmake --build build && ctest --test-dir build
 
+Ecosystem
+---------
+
+[zpaq-std](https://github.com/YadeWira/zpaq-std) 1.6.0 and later bundle
+`lzfse-ex` 1.0.3 as their LZFSE codec; its `-ma:lzfse` output is byte-for-byte
+identical to Apple's encoder.
+
 Bindings
 --------
 
