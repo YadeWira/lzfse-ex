@@ -1,8 +1,9 @@
+cmake_minimum_required(VERSION 3.5)
+
 project(lzfse C)
-cmake_minimum_required(VERSION 2.8.6)
 
 # Keep in sync with the LZFSE_VERSION_* macros in src/lzfse.h.
-set(LZFSE_VERSION 1.0.0)
+set(LZFSE_VERSION 1.0.1)
 set(LZFSE_SOVERSION 1)
 
 include(CheckCCompilerFlag)

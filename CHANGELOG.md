@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.1 — 2026-10-22
+
+- Decoder: avoid unsigned pointer underflow (undefined behavior) in match
+  copies with a short distance. `dst[i - D]` underflows `size_t` when `i < D`,
+  which UBSan flags as pointer overflow on mutated inputs (#53). The match
+  source pointer is now computed explicitly. Decoded output is unchanged
+  (verified with the test suite and 150 corpus files).
+- `lzfse.h`: add `LZFSE_EX_VERSION_STRING` as an alias of
+  `LZFSE_VERSION_STRING`, for codec listings such as `codecinfo`.
+- Build: require CMake 3.5 and call `cmake_minimum_required()` before
+  `project()`. CMake 4 refuses projects that require less than 3.5, which
+  broke configuration on the macOS 14 CI runner.
+
 ## 1.0.0 — 2026-10-22
 
 First release of `lzfse-ex`, a fork of the Apple LZFSE reference
