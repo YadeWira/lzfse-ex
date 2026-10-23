@@ -1,5 +1,13 @@
 get_filename_component(INPUT_NAME "${INPUT}" NAME)
 
+# An optional runner (Wine, or an emulator like qemu-aarch64) is passed as a
+# '|'-separated list, because CMake would split a ';' list on the -D argument.
+if(DEFINED LZFSE_WRAPPER AND NOT "${LZFSE_WRAPPER}" STREQUAL "")
+  string(REPLACE "|" ";" LZFSE_WRAPPER "${LZFSE_WRAPPER}")
+else()
+  set(LZFSE_WRAPPER "")
+endif()
+
 set(LZFSE_TMP_DIR     "${CMAKE_CURRENT_BINARY_DIR}/test-tmp")
 set(COMPRESSED_FILE   "${LZFSE_TMP_DIR}/${INPUT_NAME}.lzfse")
 set(DECOMPRESSED_FILE "${LZFSE_TMP_DIR}/${INPUT_NAME}")

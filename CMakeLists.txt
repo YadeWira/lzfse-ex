@@ -1,6 +1,10 @@
 project(lzfse C)
 cmake_minimum_required(VERSION 2.8.6)
 
+# Keep in sync with the LZFSE_VERSION_* macros in src/lzfse.h.
+set(LZFSE_VERSION 1.0.0)
+set(LZFSE_SOVERSION 1)
+
 include(CheckCCompilerFlag)
 
 # If LZFSE is being bundled in another project, we don't want to
@@ -82,6 +86,8 @@ else()
 endif()
 
 set_target_properties(lzfse PROPERTIES
+  VERSION "${LZFSE_VERSION}"
+  SOVERSION "${LZFSE_SOVERSION}"
   POSITION_INDEPENDENT_CODE TRUE
   C_VISIBILITY_PRESET hidden
   INTERPROCEDURAL_OPTIMIZATION TRUE)
@@ -121,6 +127,44 @@ if(NOT LZFSE_DISABLE_TESTS)
   include(CTest)
   enable_testing()
 
+  # Command used to run test binaries: Wine when cross-compiling for Windows,
+  # or the emulator CMake was configured with (for example qemu-aarch64).
+  set(LZFSE_TEST_RUNNER "")
+  if(WIN32 AND NOT CMAKE_HOST_WIN32 AND LZFSE_WINE)
+    set(LZFSE_TEST_RUNNER "${LZFSE_WINE}")
+  elseif(CMAKE_CROSSCOMPILING_EMULATOR)
+    set(LZFSE_TEST_RUNNER "${CMAKE_CROSSCOMPILING_EMULATOR}")
+  endif()
+  # Lists cannot be passed through -D without being split; use '|' instead.
+  string(REPLACE ";" "|" LZFSE_TEST_RUNNER_ARG "${LZFSE_TEST_RUNNER}")
+
+  # Unit tests for the buffer-to-buffer API (empty/corrupt/truncated input,
+  # destination buffer handling).
+  add_executable(lzfse_api_tests tests/api-tests.c)
+  target_link_libraries(lzfse_api_tests lzfse)
+  if(CMAKE_VERSION VERSION_LESS 2.8.11)
+    set_property(TARGET lzfse_api_tests APPEND PROPERTY
+      INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/src")
+  else()
+    target_include_directories(lzfse_api_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+  endif()
+  lzfse_add_compiler_flags(lzfse_api_tests -Wall -Wno-unknown-pragmas -Wno-unused-variable)
+  if(CMAKE_VERSION VERSION_LESS 3.1 OR CMAKE_C_COMPILER_ID STREQUAL "Intel")
+    lzfse_add_compiler_flags(lzfse_api_tests -std=c99)
+  else()
+    set_property(TARGET lzfse_api_tests PROPERTY C_STANDARD 99)
+  endif()
+  add_test(NAME "${LZFSE_TEST_PREFIX}api"
+    COMMAND ${LZFSE_TEST_RUNNER} $<TARGET_FILE:lzfse_api_tests>)
+
+  # Command line tool tests (empty input, garbage input, roundtrip).
+  add_test(NAME "${LZFSE_TEST_PREFIX}cli"
+    COMMAND "${CMAKE_COMMAND}"
+      -DLZFSE_WRAPPER=${LZFSE_TEST_RUNNER_ARG}
+      -DLZFSE_CLI=$<TARGET_FILE:lzfse_cli>
+      -DLZFSE_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/cli-tests
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cli-tests.cmake)
+
   file(GLOB_RECURSE
     ROUNDTRIP_INPUTS
     RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
@@ -129,7 +173,7 @@ if(NOT LZFSE_DISABLE_TESTS)
   foreach(INPUT ${ROUNDTRIP_INPUTS})
     add_test(NAME "${LZFSE_TEST_PREFIX}roundtrip/${INPUT}"
       COMMAND "${CMAKE_COMMAND}"
-        -DLZFSE_WRAPPER=${LZFSE_WINE}
+        -DLZFSE_WRAPPER=${LZFSE_TEST_RUNNER_ARG}
         -DLZFSE_CLI=$<TARGET_FILE:lzfse_cli>
         -DINPUT=${CMAKE_CURRENT_SOURCE_DIR}/${INPUT}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/round-trip.cmake)

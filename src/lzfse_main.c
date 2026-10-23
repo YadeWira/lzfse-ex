@@ -26,6 +26,18 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 #  define _POSIX_C_SOURCE 200112L
 #endif
 
+// On 32-bit POSIX systems, make off_t 64 bits so that files larger than 2 GB
+// can be read. Must be defined before any system header is included.
+#if !defined(_WIN32) && !defined(_FILE_OFFSET_BITS)
+#  define _FILE_OFFSET_BITS 64
+#endif
+
+#if defined(_MSC_VER) && _MSC_VER < 1900
+#  define LZFSE_SIZE_FMT "%Iu" // MSVC before 2015 does not support %zu
+#else
+#  define LZFSE_SIZE_FMT "%zu"
+#endif
+
 #if defined(_MSC_VER)
 #  if !defined(_CRT_NONSTDC_NO_DEPRECATE)
 #    define _CRT_NONSTDC_NO_DEPRECATE
@@ -166,7 +178,11 @@ int main(int argc, char **argv) {
 
   if (in_file != 0) {
     // If we have a file name, open it, and allocate the exact input size
+#if defined(_WIN32)
+    struct _stat64 st;
+#else
     struct stat st;
+#endif
 #if defined(_WIN32)
     in_fd = open(in_file, O_RDONLY | O_BINARY);
 #else
@@ -176,11 +192,15 @@ int main(int argc, char **argv) {
       perror(in_file);
       exit(1);
     }
+#if defined(_WIN32)
+    if (_fstat64(in_fd, &st) != 0) {
+#else
     if (fstat(in_fd, &st) != 0) {
+#endif
       perror(in_file);
       exit(1);
     }
-    if (st.st_size > SIZE_MAX) {
+    if (st.st_size < 0 || (uint64_t)st.st_size > (uint64_t)SIZE_MAX) {
       fprintf(stderr, "File is too large\n");
       exit(1);
     }
@@ -196,6 +216,11 @@ int main(int argc, char **argv) {
     }
 #endif
   }
+  // Never call malloc(0): some allocators return NULL for it, and a zero
+  // allocation also cannot be grown by the loop below. An empty input file
+  // still needs a valid one-byte buffer.
+  if (in_allocated == 0)
+    in_allocated = 1;
   in = (uint8_t *)malloc(in_allocated);
   if (in == 0) {
     perror("malloc");
@@ -205,10 +230,16 @@ int main(int argc, char **argv) {
   while (1) {
     // re-alloc if needed
     if (in_size == in_allocated) {
+      size_t new_allocated;
       if (in_allocated < (100 << 20))
-        in_allocated <<= 1; // double it
+        new_allocated = in_allocated * 2; // double it
       else
-        in_allocated += (100 << 20); // or add 100 MB if already large
+        new_allocated = in_allocated + (100 << 20); // or add 100 MB
+      if (new_allocated <= in_allocated) {
+        fprintf(stderr, "Input is too large\n");
+        exit(1);
+      }
+      in_allocated = new_allocated;
       in = lzfse_reallocf(in, in_allocated);
       if (in == 0) {
         perror("malloc");
@@ -233,14 +264,26 @@ int main(int argc, char **argv) {
 
   // Size info
   if (verbosity > 0) {
-    fprintf(stderr, "Input size: %zu B\n", in_size);
+    fprintf(stderr, "Input size: " LZFSE_SIZE_FMT " B\n", in_size);
   }
 
   //  Encode/decode
-  //  Compute size for result buffer; we assume here that encode shrinks size,
-  //  and that decode grows by no more than 4x.  These are reasonable common-
-  //  case guidelines, but are not formally guaranteed to be satisfied.
-  size_t out_allocated = (op == LZFSE_ENCODE) ? in_size : (4 * in_size);
+  //  For encoding, LZFSE can fall back to storing the input uncompressed,
+  //  which needs the input size plus an 8-byte block header and a 4-byte
+  //  end-of-stream marker. For decoding there is no size hint in the stream,
+  //  so start with 4x the input and grow on LZFSE_DECODE_STATUS_DST_FULL.
+  size_t out_allocated;
+  if (op == LZFSE_ENCODE) {
+    if (in_size > SIZE_MAX - 12) {
+      fprintf(stderr, "Input is too large\n");
+      exit(1);
+    }
+    out_allocated = in_size + 12;
+  } else {
+    out_allocated = in_size > SIZE_MAX / 4 ? SIZE_MAX / 2 : 4 * in_size;
+    if (out_allocated == 0)
+      out_allocated = 1; // never call malloc(0)
+  }
   size_t out_size = 0;
   size_t aux_allocated = (op == LZFSE_ENCODE) ? lzfse_encode_scratch_size()
                                               : lzfse_decode_scratch_size();
@@ -257,30 +300,49 @@ int main(int argc, char **argv) {
 
   double c0 = get_time();
   while (1) {
-    if (op == LZFSE_ENCODE)
+    if (op == LZFSE_ENCODE) {
       out_size = lzfse_encode_buffer(out, out_allocated, in, in_size, aux);
-    else
-      out_size = lzfse_decode_buffer(out, out_allocated, in, in_size, aux);
-
-    // If output buffer was too small, grow and retry.
-    if (out_size == 0 || (op == LZFSE_DECODE && out_size == out_allocated)) {
-      if (verbosity > 0)
-        fprintf(stderr, "Output buffer was too small, increasing size...\n");
-      out_allocated <<= 1;
-      out = (uint8_t *)lzfse_reallocf(out, out_allocated);
-      if (out == 0) {
-        perror("malloc");
+      if (out_size != 0)
+        break;
+    } else {
+      size_t decoded_size = 0;
+      int status = lzfse_decode_buffer_with_status(
+          out, out_allocated, in, in_size, aux, &decoded_size);
+      if (status == LZFSE_DECODE_STATUS_OK) {
+        out_size = decoded_size;
+        break;
+      }
+      if (status == LZFSE_DECODE_STATUS_SRC_EMPTY) {
+        fprintf(stderr, "Decode failed: input is truncated\n");
         exit(1);
       }
-      continue;
+      if (status != LZFSE_DECODE_STATUS_DST_FULL) {
+        fprintf(stderr, "Decode failed: input is not a valid LZFSE stream\n");
+        exit(1);
+      }
     }
 
-    break;
+    // Output buffer was too small: grow and retry. Note that an encode
+    // failure (return value 0) is also retried here; the initial buffer is
+    // already large enough for the uncompressed fallback, so this only
+    // triggers for unusual inputs.
+    if (verbosity > 0)
+      fprintf(stderr, "Output buffer was too small, increasing size...\n");
+    if (out_allocated > SIZE_MAX / 2) {
+      fprintf(stderr, "Output is too large\n");
+      exit(1);
+    }
+    out_allocated *= 2;
+    out = (uint8_t *)lzfse_reallocf(out, out_allocated);
+    if (out == 0) {
+      perror("malloc");
+      exit(1);
+    }
   }
   double c1 = get_time();
 
   if (verbosity > 0) {
-    fprintf(stderr, "Output size: %zu B\n", out_size);
+    fprintf(stderr, "Output size: " LZFSE_SIZE_FMT " B\n", out_size);
     size_t raw_size = (op == LZFSE_ENCODE) ? in_size : out_size;
     size_t compressed_size = (op == LZFSE_ENCODE) ? out_size : in_size;
     fprintf(stderr, "Compression ratio: %.3f\n",

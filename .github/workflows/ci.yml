@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  # Linux x64, Linux x86 (multilib), and ARM via qemu-user.
+  linux:
+    name: linux-${{ matrix.arch }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            cc: gcc
+            packages: ""
+            cflags: ""
+            ldflags: ""
+            emulator: ""
+          - arch: x86
+            cc: gcc
+            packages: gcc-multilib
+            cflags: -m32
+            ldflags: -m32
+            emulator: ""
+          - arch: arm64
+            cc: aarch64-linux-gnu-gcc
+            packages: gcc-aarch64-linux-gnu qemu-user
+            cflags: ""
+            ldflags: ""
+            emulator: "qemu-aarch64;-L;/usr/aarch64-linux-gnu"
+          - arch: armhf
+            cc: arm-linux-gnueabihf-gcc
+            packages: gcc-arm-linux-gnueabihf qemu-user
+            cflags: ""
+            ldflags: ""
+            emulator: "qemu-arm;-L;/usr/arm-linux-gnueabihf"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ${{ matrix.packages }}
+      - name: Configure
+        run: >
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_COMPILER=${{ matrix.cc }}
+          -DCMAKE_C_FLAGS="${{ matrix.cflags }}"
+          -DCMAKE_EXE_LINKER_FLAGS="${{ matrix.ldflags }}"
+          -DCMAKE_CROSSCOMPILING_EMULATOR="${{ matrix.emulator }}"
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  # MinGW-w64 builds, with the Windows binaries executed under Wine.
+  mingw:
+    name: mingw-x64
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake gcc-mingw-w64-x86-64 wine64
+      - name: Configure
+        run: >
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_SYSTEM_NAME=Windows
+          -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Test under Wine
+        run: ctest --test-dir build --output-on-failure
+
+  # MSVC, x64 and x86.
+  windows:
+    name: windows-msvc-${{ matrix.arch }}
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, Win32]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -A ${{ matrix.arch }}
+      - name: Build
+        run: cmake --build build --config Release --parallel
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+
+  # macOS, both Intel and Apple Silicon runners.
+  macos:
+    name: macos-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-13, macos-14]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  # AddressSanitizer + UndefinedBehaviorSanitizer.
+  sanitizers:
+    name: sanitizers
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake clang
+      - name: Configure
+        run: >
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_C_COMPILER=clang
+          -DENABLE_SANITIZER=address,undefined
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
