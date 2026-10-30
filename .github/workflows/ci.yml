@@ -37,12 +37,6 @@ jobs:
             cflags: ""
             ldflags: ""
             emulator: "qemu-aarch64;-L;/usr/aarch64-linux-gnu"
-          - arch: armhf
-            cc: arm-linux-gnueabihf-gcc
-            packages: gcc-arm-linux-gnueabihf qemu-user
-            cflags: ""
-            ldflags: ""
-            emulator: "qemu-arm;-L;/usr/arm-linux-gnueabihf"
     steps:
       - uses: actions/checkout@v4
         with:

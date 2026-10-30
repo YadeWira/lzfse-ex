@@ -1,8 +1,8 @@
 #!/bin/sh
 # Build and test LZFSE for the supported targets, from a Linux host.
 #
-#   Linux x64, Linux x86 (gcc -m32), Linux arm64 and armhf (cross-compiled,
-#   run under qemu-user), Windows x64 and x86 (MinGW-w64, run under Wine).
+#   Linux x64, Linux x86 (gcc -m32), Linux arm64 (cross-compiled, run under
+#   qemu-user), Windows x64 and x86 (MinGW-w64, run under Wine).
 #
 # Targets whose toolchain is not installed are skipped with a message. The
 # script exits non-zero if any configured target fails to build or to pass
@@ -113,15 +113,6 @@ if have aarch64-linux-gnu-gcc && have qemu-aarch64; then
     "-DCMAKE_CROSSCOMPILING_EMULATOR=qemu-aarch64;-L;/usr/aarch64-linux-gnu"
 else
   SKIPPED="$SKIPPED linux-arm64(no aarch64 toolchain or qemu-user)"
-fi
-
-# --- Linux ARM hard-float (qemu-user) -------------------------------------
-if have arm-linux-gnueabihf-gcc && have qemu-arm; then
-  run_target linux-armhf build_and_test linux-armhf \
-    -DCMAKE_C_COMPILER=arm-linux-gnueabihf-gcc \
-    "-DCMAKE_CROSSCOMPILING_EMULATOR=qemu-arm;-L;/usr/arm-linux-gnueabihf"
-else
-  SKIPPED="$SKIPPED linux-armhf(no armhf toolchain or qemu-user)"
 fi
 
 # --- Windows x64 / x86 (MinGW-w64, tested under Wine) ----------------------

@@ -2,9 +2,22 @@ LZFSE (lzfse-ex)
 ================
 
 `lzfse-ex` is a fork of the Apple LZFSE reference implementation, focused on
-portable, robust builds for Linux (x86, x86-64, ARM, ARM64), Windows (x86 and
-x86-64, Windows 7 or later), and macOS (x86-64 and ARM64). See
-[CHANGELOG.md](CHANGELOG.md) for the changes in this fork.
+portable, robust builds. See [CHANGELOG.md](CHANGELOG.md) for the changes in
+this fork.
+
+| Component | Status |
+|---|---|
+| CI | [![CI](https://github.com/YadeWira/lzfse-ex/actions/workflows/ci.yml/badge.svg)](https://github.com/YadeWira/lzfse-ex/actions/workflows/ci.yml) |
+| Latest release | [![Release](https://img.shields.io/github/v/release/YadeWira/lzfse-ex)](https://github.com/YadeWira/lzfse-ex/releases/latest) |
+| Library (encode/decode) | ✅ Stable |
+| Command line tool | ✅ Stable |
+| Linux x86 / x86-64 | ✅ Tested |
+| Linux ARM64 | ✅ Tested |
+| Linux ARM 32-bit | ❌ Not supported |
+| Windows x86 (Windows XP SP3 or later) | ✅ Tested |
+| Windows x86-64 (Windows 7 or later) | ✅ Tested |
+| macOS Intel / Apple Silicon | ✅ Tested |
+| Big-endian targets | ❌ Not supported |
 
 This is the reference C implementation of the LZFSE compressor introduced in the
 [Compression library](https://developer.apple.com/library/mac/documentation/Performance/Reference/Compression/index.html) with OS X 10.11 and iOS 9.
@@ -81,14 +94,21 @@ Supported platforms
 
 The library and command line tool support:
 
-    Linux     x86 (32-bit), x86-64, arm (32-bit hard float), arm64
-    Windows   x86, x86-64 (Windows 7 or later), MSVC or MinGW-w64
+    Linux     x86 (32-bit), x86-64, arm64
+    Windows   x86 (Windows XP SP3 or later), x86-64 (Windows 7 or later)
     macOS     x86-64 and arm64
 
+MSVC and MinGW-w64 are supported on Windows. Only little-endian targets are
+supported; big-endian systems are not (the LZFSE format is little-endian).
+
+Windows XP SP3 x86 is tested by hand: the x86 binaries pass the test suite,
+`codec_check` and roundtrips up to 10 MB on a real XP SP3 machine. The x86-64
+target requires Windows 7 or later.
+
 On a Linux host, `scripts/ci-matrix.sh` builds and tests every target whose
-toolchain is installed: 32-bit builds with `-m32`, ARM builds with the GNU
-cross compilers and qemu-user, and Windows builds with MinGW-w64 run under
-Wine. Missing toolchains are reported and skipped. The sanitizer build
+toolchain is installed: 32-bit builds with `-m32`, ARM64 with the GNU cross
+compiler and qemu-user, and Windows builds with MinGW-w64 run under Wine.
+Missing toolchains are reported and skipped. The sanitizer build
 (AddressSanitizer + UndefinedBehaviorSanitizer) is part of the matrix as well.
 
     $ ./scripts/ci-matrix.sh

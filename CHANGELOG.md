@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Platform support: Windows XP SP3 x86 is now tested and supported (the x86
+  binaries pass the test suite, `codec_check` and roundtrips up to 10 MB on a
+  real XP SP3 machine). Linux ARM 32-bit (armhf) is no longer supported or
+  tested; Linux ARM64 remains supported.
+
 ## 1.0.3 — 2026-10-22
 
 - Tests: fix the link of the bundled `codec_check` test on macOS when
