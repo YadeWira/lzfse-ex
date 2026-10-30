@@ -1,7 +1,14 @@
 # Changelog
 
-## Unreleased
+## 1.0.4 — 2026-10-30
 
+- Command line tool: `-v` no longer prints `inf`/`nan` for an empty input or
+  for an operation too fast to measure (division by zero).
+- Decoder: the match distance check computes integer offsets instead of a
+  pointer one past the end of the destination buffer. Same result, but no
+  undefined pointer arithmetic when decoding damaged input.
+- Build: fail at compile time on big-endian targets instead of silently
+  producing streams that cannot be decoded.
 - Build: optional `LZFSE_FAST_ENCODE` (CMake) / `make FAST=1` encoder preset
   (hash width 2 and bounded match scan). On a 52 MB mixed corpus it encodes at
   ~100 MB/s instead of 70 MB/s for +0.2% size; on highly repetitive data the

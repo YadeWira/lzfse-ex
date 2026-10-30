@@ -345,11 +345,17 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Output size: " LZFSE_SIZE_FMT " B\n", out_size);
     size_t raw_size = (op == LZFSE_ENCODE) ? in_size : out_size;
     size_t compressed_size = (op == LZFSE_ENCODE) ? out_size : in_size;
-    fprintf(stderr, "Compression ratio: %.3f\n",
-            (double)raw_size / (double)compressed_size);
-    double ns_per_byte = 1.0e9 * (c1 - c0) / (double)raw_size;
-    double mb_per_s = (double)raw_size / 1024.0 / 1024.0 / (c1 - c0);
-    fprintf(stderr, "Speed: %.2f ns/B, %.2f MB/s\n",ns_per_byte,mb_per_s);
+    if (compressed_size > 0)
+      fprintf(stderr, "Compression ratio: %.3f\n",
+              (double)raw_size / (double)compressed_size);
+    double elapsed = c1 - c0;
+    if (raw_size > 0 && elapsed > 0) {
+      double ns_per_byte = 1.0e9 * elapsed / (double)raw_size;
+      double mb_per_s = (double)raw_size / 1024.0 / 1024.0 / elapsed;
+      fprintf(stderr, "Speed: %.2f ns/B, %.2f MB/s\n", ns_per_byte, mb_per_s);
+    } else {
+      fprintf(stderr, "Speed: n/a\n");
+    }
   }
 
   // Write output
