@@ -118,6 +118,31 @@ With CMake, `ctest` runs the same tests:
 
     $ cmake -S . -B build && cmake --build build && ctest --test-dir build
 
+Encoder tuning
+--------------
+
+The default encoder is byte-identical to Apple's. `LZFSE_FAST_ENCODE` trades a
+little compression ratio for encoding speed; the format is unchanged, so the
+streams still decode with Apple's LZFSE, macOS, zpaq-std's ZPAQL decoder, etc.
+
+    cmake -S . -B build -DLZFSE_FAST_ENCODE=ON    # or: make FAST=1
+
+| Dataset | Default | Fast | Change |
+|---|---|---|---|
+| Mixed corpus, 52 MB (text, image, audio, executables, documents) | 79.60% | 79.78% | +0.2% size, 70 → ~100 MB/s encode |
+| Text files, 1.7 MB | 19.54% | 20.00% | +2.3% size, 75 → 102 MB/s |
+| Repeated log lines, 40 MB | 5.33% | 5.20% | −2.5% size, 137 → 196 MB/s |
+| Zeros, 40 MB | 24.8 KB | 29.4 KB | +18.6% size, 19 → 129 MB/s |
+
+Decoding speed and the decoder are unaffected. The preset uses a hash width of
+2 and stops scanning a match beyond the maximum encodable length (2359 bytes).
+The output is no longer byte-identical to Apple's, but it is the same format
+(cross-decoding verified in both directions).
+
+The individual tunables in `src/lzfse_tunables.h` (`HASH_BITS`, `HASH_WIDTH`,
+`GOOD_MATCH`, `LZVN_THRESHOLD`) can also be overridden with `-D` flags, at the
+cost of changing the encoder workspace size.
+
 Ecosystem
 ---------
 

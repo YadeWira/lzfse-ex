@@ -56,6 +56,12 @@ function(lzfse_add_compiler_flags target)
   endforeach()
 endfunction()
 
+option(LZFSE_FAST_ENCODE
+  "Faster encoder with a slightly lower compression ratio. The output stays format-compatible but is no longer byte-identical to Apple's encoder." OFF)
+if(LZFSE_FAST_ENCODE)
+  add_definitions(-DLZFSE_FAST_MATCH_SCAN -DLZFSE_ENCODE_HASH_WIDTH=2)
+endif()
+
 if (ENABLE_SANITIZER)
   set(CMAKE_C_FLAGS " ${CMAKE_C_FLAGS} -fsanitize=${ENABLE_SANITIZER}")
   set(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -fsanitize=${ENABLE_SANITIZER}")

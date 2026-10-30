@@ -36,6 +36,9 @@ CMD_OBJS := $(OBJ_DIR)/lzfse_main.o
 OBJS := $(LIB_OBJS) $(CMD_OBJS)
 
 CFLAGS := -Os -Wall -Wno-unknown-pragmas -Wno-unused-variable -DNDEBUG -D_POSIX_C_SOURCE -std=c99 -fvisibility=hidden
+ifeq ($(FAST),1)
+CFLAGS += -DLZFSE_FAST_MATCH_SCAN -DLZFSE_ENCODE_HASH_WIDTH=2
+endif
 
 all: $(LZFSE_LIB) $(LZFSE_CMD) $(OBJS)
 

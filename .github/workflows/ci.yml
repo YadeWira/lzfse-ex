@@ -57,6 +57,25 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
+  # The optional fast-encoder preset must build and pass the same tests.
+  fast-encode:
+    name: linux-x64-fast
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DLZFSE_FAST_ENCODE=ON
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
   # MinGW-w64 builds, with the Windows binaries executed under Wine.
   mingw:
     name: mingw-x64

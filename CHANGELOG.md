@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Build: optional `LZFSE_FAST_ENCODE` (CMake) / `make FAST=1` encoder preset
+  (hash width 2 and bounded match scan). On a 52 MB mixed corpus it encodes at
+  ~100 MB/s instead of 70 MB/s for +0.2% size; on highly repetitive data the
+  gain is much larger (zeros: 19 → 129 MB/s, +18.6% size on that file). The
+  format is unchanged and streams cross-decode with Apple's encoder, but the
+  output is no longer byte-identical to it. The default build is unchanged.
 - Platform support: Windows XP SP3 x86 is now tested and supported (the x86
   binaries pass the test suite, `codec_check` and roundtrips up to 10 MB on a
   real XP SP3 machine). Linux ARM 32-bit (armhf) is no longer supported or
